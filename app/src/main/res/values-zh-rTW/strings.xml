@@ -36,8 +36,8 @@
     <string name="hint_profile_name">設定檔名稱（例：家裡）</string>
 
     <!-- Buttons -->
-    <string name="btn_start_tunnel">🚀 啟動隧道</string>
-    <string name="btn_stop_tunnel">🛑 停止隧道</string>
+    <string name="btn_start_tunnel">啟動隧道</string>
+    <string name="btn_stop_tunnel">停止隧道</string>
     <string name="btn_restart_tunnel">🔄 重啟隧道</string>
     <string name="btn_select_apps">📱 App</string>
     <string name="btn_save_profile">💾 儲存設定檔</string>
@@ -130,4 +130,11 @@
 
     <!-- Debug log -->
     <string name="debug_crash_detail">時間: %1$s\n線程: %2$s\n類型: %3$s\n訊息: %4$s\n堆疊:\n%5$s</string>
+    <string name="status_title_idle">未連線</string>
+    <string name="status_title_connecting">連線中…</string>
+    <string name="status_title_connected">已連線</string>
+    <string name="status_title_error">錯誤</string>
+    <string name="status_detail_gateway">%1$s:%2$d（Wi-Fi 閘道）</string>
+    <string name="status_detail_server">%1$s:%2$d</string>
+    <string name="label_advanced">進階設定</string>
 </resources>

@@ -11,6 +11,11 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.ScrollView
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -37,6 +42,7 @@ class MainActivity : Activity() {
         private const val REQ_VPN_PERMISSION = 100
         private const val REQ_NOTIFICATION_PERMISSION = 200
         const val EXTRA_AUTO_START = "auto_start_from_tile"
+        private const val KEY_UI_ADVANCED_EXPANDED = "ui_advanced_expanded"
     }
 
     private lateinit var etHost: EditText
@@ -58,6 +64,11 @@ class MainActivity : Activity() {
     private lateinit var btnImportProfiles: Button
     private lateinit var spinnerProfile: Spinner
     private lateinit var tvStatus: TextView
+    private lateinit var tvStatusTitle: TextView
+    private lateinit var statusDot: View
+
+    /** 開啟時讀到的上次閃退／錯誤訊息；未連線時在狀態卡用紅色顯示。 */
+    private var startupNotice: String? = null
     private lateinit var tvKillSwitch: TextView
     private lateinit var btnKillSwitch: Button
     private lateinit var btnBattery: Button
@@ -100,11 +111,12 @@ class MainActivity : Activity() {
             attemptStart()
         }
         if (savedInstanceState == null) {
-            DebugLog.getLastCrash()?.let { crash ->
-                tvStatus.text = getString(R.string.last_crash_prefix, crash)
+            startupNotice = DebugLog.getLastCrash()?.let { crash ->
+                getString(R.string.last_crash_prefix, crash)
             } ?: DebugLog.getLastError()?.let { err ->
-                tvStatus.text = getString(R.string.last_error_prefix, err)
+                getString(R.string.last_error_prefix, err)
             }
+            updateStatus(TunSocksService.lastStatus)
         }
         requestNotificationPermissionIfNeeded()
     }
@@ -155,34 +167,144 @@ class MainActivity : Activity() {
         unregisterReceiver(statusReceiver)
     }
 
+    // ── UI 樣式工具（只用內建元件 + GradientDrawable，不引入 Material）──
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    /** 依主題文字顏色判斷深淺色，避免 OEM 的 DeviceDefault 是淺色時卡片配色錯誤。 */
+    private val isDark: Boolean by lazy {
+        val a = obtainStyledAttributes(intArrayOf(android.R.attr.textColorPrimary))
+        val c = a.getColor(0, Color.WHITE)
+        a.recycle()
+        (Color.red(c) + Color.green(c) + Color.blue(c)) / 3 > 128
+    }
+    private val cPageBg get() = if (isDark) 0xFF111216.toInt() else 0xFFF2F2F7.toInt()
+    private val cCardBg get() = if (isDark) 0xFF1E1F24.toInt() else 0xFFFFFFFF.toInt()
+    private val cFieldBg get() = if (isDark) 0xFF26272D.toInt() else 0xFFF7F7FA.toInt()
+    private val cStroke get() = if (isDark) 0xFF3A3B43.toInt() else 0xFFD8D8DE.toInt()
+    private val cText get() = if (isDark) 0xFFF5F5F7.toInt() else 0xFF1C1C1E.toInt()
+    private val cTextSecondary get() = if (isDark) 0xFF9A9AA2.toInt() else 0xFF6C6C72.toInt()
+    private val cAccent = 0xFF0A84FF.toInt()
+    private val cGreen = 0xFF30D158.toInt()
+    private val cYellow = 0xFFFFC300.toInt()
+    private val cRed = 0xFFFF453A.toInt()
+    private val cGray = 0xFF8E8E93.toInt()
+
+    private fun rounded(color: Int, radiusDp: Int, strokeColor: Int? = null) = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = dp(radiusDp).toFloat()
+        if (strokeColor != null) setStroke(dp(1), strokeColor)
+    }
+
+    private fun lp(topDp: Int = 0, bottomDp: Int = 0, height: Int = ViewGroup.LayoutParams.WRAP_CONTENT) =
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height).apply {
+            topMargin = dp(topDp); bottomMargin = dp(bottomDp)
+        }
+
+    private fun card(vararg children: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = rounded(cCardBg, 16)
+        setPadding(dp(16), dp(10), dp(16), dp(14))
+        layoutParams = lp(bottomDp = 4)
+        children.forEach { addView(it) }
+    }
+
+    private fun sectionTitle(text: String) = TextView(this).apply {
+        this.text = text.uppercase()
+        textSize = 13f
+        letterSpacing = 0.04f
+        setTextColor(cTextSecondary)
+        setPadding(dp(4), dp(18), dp(4), dp(6))
+    }
+
+    private fun styleField(et: EditText) {
+        et.background = rounded(cFieldBg, 10, cStroke)
+        et.setPadding(dp(12), dp(10), dp(12), dp(10))
+        et.textSize = 16f
+        et.setTextColor(cText)
+        et.setHintTextColor(cTextSecondary)
+        et.layoutParams = lp(topDp = 8)
+    }
+
+    private fun styleSecondaryButton(b: Button) {
+        b.background = rounded(cFieldBg, 10)
+        b.isAllCaps = false
+        b.stateListAnimator = null
+        b.textSize = 15f
+        b.setTextColor(ColorStateList(
+            arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
+            intArrayOf(cGray, cAccent)
+        ))
+        if (b.layoutParams == null) b.layoutParams = lp(topDp = 8)
+    }
+
+    private fun styleCompound(v: TextView) {
+        v.setTextColor(cText)
+        v.textSize = 15f
+    }
+
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 48)
+            setPadding(dp(16), dp(12), dp(16), dp(32))
         }
 
-        fun label(text: String) = TextView(this).apply {
-            this.text = text
-            textSize = 15f
-            setPadding(0, 20, 0, 6)
-        }
-
-        etHost = EditText(this).apply { hint = getString(R.string.hint_host) }
+        etHost = EditText(this).apply { hint = getString(R.string.hint_host); isSingleLine = true }
         etPort = EditText(this).apply {
             hint = getString(R.string.hint_port)
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
         }
-        etDns1 = EditText(this).apply { hint = getString(R.string.hint_dns1) }
-        etDns2 = EditText(this).apply { hint = getString(R.string.hint_dns2) }
-        etUser = EditText(this).apply { hint = getString(R.string.hint_user) }
+        etDns1 = EditText(this).apply { hint = getString(R.string.hint_dns1); isSingleLine = true }
+        etDns2 = EditText(this).apply { hint = getString(R.string.hint_dns2); isSingleLine = true }
+        etUser = EditText(this).apply { hint = getString(R.string.hint_user); isSingleLine = true }
         etPass = EditText(this).apply {
             hint = getString(R.string.hint_pass)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            // 密碼欄位預設等寬字型，改回一般字型與其他欄位一致
+            typeface = Typeface.DEFAULT
         }
-        etProfileName = EditText(this).apply { hint = getString(R.string.hint_profile_name) }
+        etProfileName = EditText(this).apply { hint = getString(R.string.hint_profile_name); isSingleLine = true }
+        listOf(etHost, etPort, etDns1, etDns2, etUser, etPass, etProfileName).forEach { styleField(it) }
 
+        // ── 狀態卡：圓點 + 大字狀態 + 小字詳情 ──
+        statusDot = View(this).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(cGray) }
+            layoutParams = LinearLayout.LayoutParams(dp(14), dp(14)).apply { rightMargin = dp(14) }
+        }
+        tvStatusTitle = TextView(this).apply {
+            textSize = 20f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(cText)
+        }
+        tvStatus = TextView(this).apply {
+            textSize = 14f
+            setTextColor(cTextSecondary)
+            setPadding(0, dp(2), 0, 0)
+        }
+        val statusTexts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(tvStatusTitle)
+            addView(tvStatus)
+        }
+        val statusCard = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(cCardBg, 16)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            layoutParams = lp()
+            addView(statusDot)
+            addView(statusTexts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
+        // ── 主要按鈕：未連線藍色「啟動」，執行中紅色「停止」──
         btnToggle = Button(this).apply {
             text = getString(R.string.btn_start_tunnel)
+            isAllCaps = false
+            stateListAnimator = null
+            textSize = 17f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = rounded(cAccent, 14)
+            layoutParams = lp(topDp = 12, bottomDp = 4, height = dp(56))
             setOnClickListener {
                 if (TunSocksService.isRunning) {
                     startService(Config.stopIntent(this@MainActivity))
@@ -197,26 +319,14 @@ class MainActivity : Activity() {
                 startActivity(Intent(this@MainActivity, AppListActivity::class.java))
             }
         }
-        tvStatus = TextView(this).apply {
-            textSize = 14f
-            setPadding(0, 8, 0, 24)
-        }
 
-        cbUdpInTcp = CheckBox(this).apply {
-            text = getString(R.string.label_udp_in_tcp)
-            setPadding(0, 8, 0, 0)
-        }
-        cbRemoteDns = CheckBox(this).apply {
-            text = getString(R.string.label_remote_dns)
-            setPadding(0, 8, 0, 0)
-        }
-        cbAutoStart = CheckBox(this).apply {
-            text = getString(R.string.label_auto_start)
-            setPadding(0, 8, 0, 0)
-        }
+        cbUdpInTcp = CheckBox(this).apply { text = getString(R.string.label_udp_in_tcp) }
+        cbRemoteDns = CheckBox(this).apply { text = getString(R.string.label_remote_dns) }
+        cbAutoStart = CheckBox(this).apply { text = getString(R.string.label_auto_start) }
         tvKillSwitch = TextView(this).apply {
             textSize = 14f
-            setPadding(0, 8, 0, 0)
+            setTextColor(cTextSecondary)
+            setPadding(dp(4), dp(10), 0, 0)
         }
         btnKillSwitch = Button(this).apply {
             text = getString(R.string.btn_vpn_settings)
@@ -234,6 +344,8 @@ class MainActivity : Activity() {
         fun modeBtn(text: String, id: Int) = RadioButton(this).apply {
             this.text = text
             id.let { setId(it) }
+            styleCompound(this)
+            setPadding(paddingLeft, dp(6), paddingRight, dp(6))
         }
         modeGroup.addView(modeBtn(getString(R.string.label_mode_global), Config.MODE_GLOBAL))
         modeGroup.addView(modeBtn(getString(R.string.label_mode_allowlist), Config.MODE_ALLOWLIST))
@@ -244,72 +356,79 @@ class MainActivity : Activity() {
         // 因此把它打開會連帶把模式切到「排除勾選的 App」：電台按鈕會同步跳過去，是可見行為。
         cbCoexist = CheckBox(this).apply {
             text = getString(R.string.label_coexist)
-            setPadding(0, 12, 0, 0)
+            setPadding(paddingLeft, dp(10), paddingRight, 0)
         }
         tvCoexist = TextView(this).apply {
             textSize = 12f
-            alpha = 0.75f
-            setPadding(0, 0, 0, 4)
+            setTextColor(cTextSecondary)
+            setPadding(dp(4), 0, 0, dp(4))
+        }
+        listOf(cbUdpInTcp, cbRemoteDns, cbAutoStart, cbCoexist).forEach {
+            styleCompound(it)
+            it.setPadding(it.paddingLeft, dp(8), it.paddingRight, dp(8))
         }
 
         // 設定檔
-        spinnerProfile = Spinner(this)
+        spinnerProfile = Spinner(this).apply { layoutParams = lp(topDp = 8) }
         btnSaveProfile = Button(this).apply { text = getString(R.string.btn_save_profile) }
         btnDeleteProfile = Button(this).apply { text = getString(R.string.btn_delete_profile) }
-        val profileRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        profileRow.addView(btnSaveProfile, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        profileRow.addView(btnDeleteProfile, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
-        // 匯出 / 匯入（剪貼簿 JSON 往返，方便跨裝置搬移設定）
         btnExportProfiles = Button(this).apply { text = getString(R.string.btn_export_profiles) }
         btnImportProfiles = Button(this).apply { text = getString(R.string.btn_import_profiles) }
-        val ioRow = LinearLayout(this).apply {
+        fun pairRow(a: Button, b: Button) = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            layoutParams = lp(topDp = 8)
+            addView(a, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(4) })
+            addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(4) })
         }
-        ioRow.addView(btnExportProfiles, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        ioRow.addView(btnImportProfiles, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        listOf(btnSelectApps, btnKillSwitch, btnBattery).forEach { styleSecondaryButton(it) }
+        val profileRow = pairRow(btnSaveProfile, btnDeleteProfile)
+        // 匯出 / 匯入（剪貼簿 JSON 往返，方便跨裝置搬移設定）
+        val ioRow = pairRow(btnExportProfiles, btnImportProfiles)
+        listOf(btnSaveProfile, btnDeleteProfile, btnExportProfiles, btnImportProfiles).forEach { styleSecondaryButton(it) }
 
-        // 啟動隧道按鈕和結果放最上面，一打開就看得到
+        // ── 進階設定：平常收起，點標題展開；展開狀態記在偏好設定 ──
+        val advancedBody = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(sectionTitle(getString(R.string.label_dns)))
+            addView(card(etDns1, etDns2))
+            addView(sectionTitle(getString(R.string.label_auth)))
+            addView(card(etUser, etPass))
+            addView(sectionTitle(getString(R.string.label_other)))
+            addView(card(cbUdpInTcp, cbRemoteDns, cbAutoStart, tvKillSwitch, btnKillSwitch, btnBattery))
+            addView(sectionTitle(getString(R.string.label_profiles)))
+            addView(card(etProfileName, spinnerProfile, profileRow, ioRow))
+        }
+        val advancedHeader = TextView(this).apply {
+            textSize = 16f
+            setTextColor(cAccent)
+            background = rounded(cCardBg, 16)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            layoutParams = lp(topDp = 20)
+        }
+        fun applyAdvanced(expanded: Boolean) {
+            advancedBody.visibility = if (expanded) View.VISIBLE else View.GONE
+            advancedHeader.text = getString(R.string.label_advanced) + if (expanded) "  ▾" else "  ▸"
+        }
+        applyAdvanced(Config.prefs(this).getBoolean(KEY_UI_ADVANCED_EXPANDED, false))
+        advancedHeader.setOnClickListener {
+            val next = advancedBody.visibility != View.VISIBLE
+            Config.prefs(this).edit().putBoolean(KEY_UI_ADVANCED_EXPANDED, next).apply()
+            applyAdvanced(next)
+        }
+
+        // 版面：狀態卡 → 主按鈕 → 伺服器 → 隧道模式 → 進階設定（收合）
+        root.addView(statusCard)
         root.addView(btnToggle)
-        root.addView(tvStatus)
-        root.addView(label(getString(R.string.label_server)))
-        root.addView(etHost)
-        root.addView(etPort)
-        root.addView(label(getString(R.string.label_dns)))
-        root.addView(etDns1)
-        root.addView(etDns2)
-        root.addView(label(getString(R.string.label_auth)))
-        root.addView(etUser)
-        root.addView(etPass)
-        root.addView(label(getString(R.string.label_mode)))
-        root.addView(modeGroup)
-        root.addView(cbCoexist)
-        root.addView(tvCoexist)
-        // App 按鈕貼近「僅排除以下 App」選項
-        root.addView(btnSelectApps)
-        root.addView(label(getString(R.string.label_other)))
-        root.addView(cbUdpInTcp)
-        root.addView(cbRemoteDns)
-        root.addView(cbAutoStart)
-        root.addView(tvKillSwitch)
-        root.addView(btnKillSwitch)
-        root.addView(btnBattery)
-        root.addView(label(getString(R.string.label_profiles)))
-        root.addView(etProfileName)
-        root.addView(spinnerProfile)
-        root.addView(profileRow)
-        root.addView(ioRow)
+        root.addView(sectionTitle(getString(R.string.label_server)))
+        root.addView(card(etHost, etPort))
+        root.addView(sectionTitle(getString(R.string.label_mode)))
+        root.addView(card(modeGroup, cbCoexist, tvCoexist, btnSelectApps))
+        root.addView(advancedHeader)
+        root.addView(advancedBody)
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
+            setBackgroundColor(cPageBg)
             addView(root)
         }
         setContentView(scroll)
@@ -719,11 +838,40 @@ class MainActivity : Activity() {
     }
 
     private fun updateStatus(text: String?) {
-        tvStatus.text = text ?: ""
-        // 啟動/停止共用單一按鈕：執行中顯示「停止隧道」，停止時顯示「啟動隧道」
+        val raw = text ?: ""
         val running = TunSocksService.isRunning
+        // 服務送出的字串以 ✅／⚠️ 開頭區分成功與錯誤，這裡只拿來分類，不改服務端的訊息。
+        val detail = raw.removePrefix("✅").removePrefix("⚠️").trim()
+        val idleTexts = setOf("", getString(R.string.status_not_started), getString(R.string.status_stopped))
+        val (titleRes, dotColor, shownDetail) = when {
+            running && raw.startsWith("✅") -> Triple(R.string.status_title_connected, cGreen, connectedDetail(detail))
+            running && raw.contains("⚠️") -> Triple(R.string.status_title_error, cRed, detail)
+            running -> Triple(R.string.status_title_connecting, cYellow, detail)
+            raw in idleTexts && startupNotice != null ->
+                Triple(R.string.status_title_error, cRed, startupNotice!!.removePrefix("⚠️").trim())
+            raw in idleTexts -> Triple(R.string.status_title_idle, cGray, detail)
+            else -> Triple(R.string.status_title_error, cRed, detail)
+        }
+        if (running) startupNotice = null
+        tvStatusTitle.text = getString(titleRes)
+        tvStatusTitle.setTextColor(if (dotColor == cRed) cRed else cText)
+        tvStatus.text = shownDetail
+        tvStatus.visibility = if (shownDetail.isBlank()) View.GONE else View.VISIBLE
+        (statusDot.background as GradientDrawable).setColor(dotColor)
+        // 啟動/停止共用單一按鈕：執行中紅色「停止隧道」，停止時藍色「啟動隧道」
         btnToggle.text = getString(if (running) R.string.btn_stop_tunnel else R.string.btn_start_tunnel)
+        btnToggle.background = rounded(if (running) cRed else cAccent, 14)
         setConfigFieldsEnabled(!running)
+    }
+
+    /** 已連線時顯示實際 IP:埠；伺服器填 gateway/auto 時註明是 Wi-Fi 閘道。 */
+    private fun connectedDetail(fallback: String): String {
+        val ip = TunSocksService.currentServerIp ?: return fallback
+        val p = Config.prefs(this)
+        val host = p.getString(Config.KEY_HOST, "gateway") ?: ""
+        val port = p.getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
+        return if (GatewayResolver.isAuto(host)) getString(R.string.status_detail_gateway, ip, port)
+        else getString(R.string.status_detail_server, ip, port)
     }
 
     // 隧道執行中鎖定組態欄位（伺服器/DNS/驗證/模式/App 選擇/連線選項/設定檔）：

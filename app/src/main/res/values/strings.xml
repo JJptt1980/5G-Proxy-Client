@@ -36,8 +36,8 @@
     <string name="hint_profile_name">Profile name (e.g. Home)</string>
 
     <!-- Buttons -->
-    <string name="btn_start_tunnel">🚀 Start Tunnel</string>
-    <string name="btn_stop_tunnel">🛑 Stop Tunnel</string>
+    <string name="btn_start_tunnel">Start Tunnel</string>
+    <string name="btn_stop_tunnel">Stop Tunnel</string>
     <string name="btn_restart_tunnel">🔄 Restart Tunnel</string>
     <string name="btn_select_apps">📱 Apps</string>
     <string name="btn_save_profile">💾 Save Profile</string>
@@ -130,4 +130,11 @@
 
     <!-- Debug log -->
     <string name="debug_crash_detail">Time: %1$s\nThread: %2$s\nType: %3$s\nMessage: %4$s\nStack:\n%5$s</string>
+    <string name="status_title_idle">Not connected</string>
+    <string name="status_title_connecting">Connecting…</string>
+    <string name="status_title_connected">Connected</string>
+    <string name="status_title_error">Error</string>
+    <string name="status_detail_gateway">%1$s:%2$d (Wi-Fi gateway)</string>
+    <string name="status_detail_server">%1$s:%2$d</string>
+    <string name="label_advanced">Advanced settings</string>
 </resources>

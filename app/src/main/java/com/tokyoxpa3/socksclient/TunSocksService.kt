@@ -83,6 +83,10 @@ class TunSocksService : VpnService() {
         @Volatile
         var lastStatus = ""
 
+        // 目前實際連線的伺服器 IP（gateway 解析後的結果），給主畫面狀態卡顯示
+        @Volatile
+        var currentServerIp: String? = null
+
         // 系統 Always-on VPN / lockdown 狀態（由 VpnService 公開 API 讀取，供 UI 顯示 Kill Switch 三態；
         // 相較讀 Settings.Secure 的 @hide 鍵，公開 API 在 Android 12+ 仍可正確取得）
         @Volatile
@@ -403,6 +407,7 @@ class TunSocksService : VpnService() {
                 // 看門狗自己的重啟不重置，否則退避永遠停在最小延遲。
                 synchronized(serverEventLock) { serverWatchdog.reset() }
             }
+            currentServerIp = serverIp
             publishStatus(getString(R.string.status_tunnel_active, host, port))
             val nm = getSystemService(NotificationManager::class.java)
             nm.notify(NOTIFICATION_ID, createNotification(getString(R.string.notification_running)))
@@ -781,6 +786,7 @@ class TunSocksService : VpnService() {
         val host = Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: ""
         serviceScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val newIp = if (host.isBlank()) null else resolveHostOutsideTunnel(host)
+            if (newIp != null) currentServerIp = newIp
             try {
                 val err = NativeEngine.reconnect(newIp)
                 if (err != null) Log.w(TAG, "soft reconnect failed: $err")
