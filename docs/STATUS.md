@@ -3,6 +3,7 @@
 ## 目前進度
 - 分支 `gw`（從上游 987f28a 開出）：伺服器位址填 `gateway`/`auto` 時自動用 Wi-Fi 預設閘道 IPv4；預設值改為 `gateway`。
 - debug 版套件名稱加 `.gw`、App 名稱「5G Proxy Client GW」，可與原版並存。
+- 主畫面：「啟動隧道」按鈕和連線結果移到最上面（MainActivity.buildUi）。
 - 已確認 `./gradlew assembleDebug`（JDK 17）可編譯。
 
 ## 已定案的決定

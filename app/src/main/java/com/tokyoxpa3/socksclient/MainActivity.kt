@@ -199,7 +199,7 @@ class MainActivity : Activity() {
         }
         tvStatus = TextView(this).apply {
             textSize = 14f
-            setPadding(0, 24, 0, 0)
+            setPadding(0, 8, 0, 24)
         }
 
         cbUdpInTcp = CheckBox(this).apply {
@@ -277,6 +277,9 @@ class MainActivity : Activity() {
         ioRow.addView(btnExportProfiles, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         ioRow.addView(btnImportProfiles, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
+        // 啟動隧道按鈕和結果放最上面，一打開就看得到
+        root.addView(btnToggle)
+        root.addView(tvStatus)
         root.addView(label(getString(R.string.label_server)))
         root.addView(etHost)
         root.addView(etPort)
@@ -292,7 +295,6 @@ class MainActivity : Activity() {
         root.addView(tvCoexist)
         // App 按鈕貼近「僅排除以下 App」選項
         root.addView(btnSelectApps)
-        root.addView(btnToggle)
         root.addView(label(getString(R.string.label_other)))
         root.addView(cbUdpInTcp)
         root.addView(cbRemoteDns)
@@ -305,7 +307,6 @@ class MainActivity : Activity() {
         root.addView(spinnerProfile)
         root.addView(profileRow)
         root.addView(ioRow)
-        root.addView(tvStatus)
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
