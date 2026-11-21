@@ -232,7 +232,7 @@ class TunSocksService : VpnService() {
         var udpInTcp = intent?.getBooleanExtra(EXTRA_UDP_IN_TCP, false) ?: false
         var remoteDns = intent?.getBooleanExtra(EXTRA_REMOTE_DNS, Config.DEFAULT_REMOTE_DNS) ?: Config.DEFAULT_REMOTE_DNS
         if (host.isEmpty()) {
-            host = prefs.getString(Config.KEY_HOST, "") ?: ""
+            host = prefs.getString(Config.KEY_HOST, "gateway") ?: ""
             port = prefs.getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
             user = Config.getSecret(this, Config.KEY_USER)
             pass = Config.getSecret(this, Config.KEY_PASS)
@@ -281,7 +281,7 @@ class TunSocksService : VpnService() {
                 var resolved: String? = null
                 var resolveErrMsg: String? = null
                 try {
-                    resolved = InetAddress.getByName(host).hostAddress
+                    resolved = if (GatewayResolver.isAuto(host)) (GatewayResolver.wifiGatewayV4(this@TunSocksService) ?: throw IllegalStateException("no Wi-Fi gateway, connect to the hotspot first")) else InetAddress.getByName(host).hostAddress
                 } catch (e: Exception) {
                     resolveErrMsg = e.message
                 }
@@ -301,7 +301,7 @@ class TunSocksService : VpnService() {
     private fun continueStartTunnel(serverIp: String?, resolveErr: String?, backgroundStart: Boolean) {
         if (!startPending) return   // 解析期間已停止／重啟 → 放棄本次啟動
         val prefs = Config.prefs(this)
-        val host = prefs.getString(Config.KEY_HOST, "") ?: ""
+        val host = prefs.getString(Config.KEY_HOST, "gateway") ?: ""
         val port = prefs.getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
         val user = Config.getSecret(this, Config.KEY_USER)
         val pass = Config.getSecret(this, Config.KEY_PASS)
@@ -632,6 +632,7 @@ class TunSocksService : VpnService() {
     // 供軟重連在 DDNS／IP 變動後重新解析伺服器位址；失敗回傳 null（沿用舊 IP）。
     private fun resolveHostOutsideTunnel(host: String): String? {
         if (Config.isLiteralIp(host)) return host
+        if (GatewayResolver.isAuto(host)) return GatewayResolver.wifiGatewayV4(this)
         val targets = underlyingDnsTargets()
         val netByServer = underlyingNetworkByServer(targets)
         val plan = DnsCandidates.plan(targets.map { it.server }, Config.dnsServers(this))
@@ -777,7 +778,7 @@ class TunSocksService : VpnService() {
     // 不呼叫 stopEngineSync()、不清 activeSockets、isRunning 維持 true——
     // 被關閉的 session fd 由原生經 notifySocketClosed 回呼逐一從 activeSockets 移除。
     private fun softRestart() {
-        val host = Config.prefs(this).getString(Config.KEY_HOST, "") ?: ""
+        val host = Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: ""
         serviceScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val newIp = if (host.isBlank()) null else resolveHostOutsideTunnel(host)
             try {
@@ -886,7 +887,7 @@ class TunSocksService : VpnService() {
         if (lastSurfacedServerError == NativeEngine.EVENT_OK) return
         lastSurfacedServerError = NativeEngine.EVENT_OK
         val p = Config.prefs(this)
-        val host = p.getString(Config.KEY_HOST, "") ?: ""
+        val host = p.getString(Config.KEY_HOST, "gateway") ?: ""
         val port = p.getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
         publishStatus(getString(R.string.status_tunnel_active, host, port))
     }

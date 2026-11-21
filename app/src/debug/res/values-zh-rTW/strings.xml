@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">5G Proxy Client GW</string>
+    <string name="hint_host">伺服器 IP，或填 gateway＝自動用 Wi-Fi 閘道</string>
+</resources>

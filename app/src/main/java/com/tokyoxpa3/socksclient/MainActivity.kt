@@ -95,7 +95,7 @@ class MainActivity : Activity() {
         buildUi()
         // 開啟 App 即自動連線（像 sockstun）：非「閃一下」啟動、隧道未在跑、有已存設定 → 自動建立 VPN
         if (!isRecreation && !pendingAutoStart && !TunSocksService.isRunning &&
-            !(Config.prefs(this).getString(Config.KEY_HOST, "") ?: "").isBlank()
+            !(Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: "").isBlank()
         ) {
             attemptStart()
         }
@@ -321,7 +321,7 @@ class MainActivity : Activity() {
         }
 
         val prefs = Config.prefs(this)
-        etHost.setText(prefs.getString(Config.KEY_HOST, ""))
+        etHost.setText(prefs.getString(Config.KEY_HOST, "gateway"))
         etPort.setText(prefs.getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString()))
         etUser.setText(Config.getSecret(this, Config.KEY_USER))
         etPass.setText(Config.getSecret(this, Config.KEY_PASS))

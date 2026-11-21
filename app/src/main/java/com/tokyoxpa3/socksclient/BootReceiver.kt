@@ -31,7 +31,7 @@ class BootReceiver : BroadcastReceiver() {
             Log.i(TAG, "Stopped by user before shutdown, skip")
             return
         }
-        val host = prefs.getString(Config.KEY_HOST, "") ?: ""
+        val host = prefs.getString(Config.KEY_HOST, "gateway") ?: ""
         if (host.isBlank()) {
             Log.i(TAG, "No saved config, skip")
             return

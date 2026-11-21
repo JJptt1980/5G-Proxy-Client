@@ -32,6 +32,8 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix ".gw"
+            versionNameSuffix "-gw"
             minifyEnabled false
             debuggable true
         }
