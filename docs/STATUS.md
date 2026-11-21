@@ -11,10 +11,15 @@
 - 保留原 LICENSE（MIT，版權屬原作者），說明寫在 README-GW.md。
 - commit 使用 JJptt1980 的 GitHub noreply 信箱。
 
-## 下一步
-- fork 到 JJptt1980 並推送 `gw`，fork 預設分支設為 `gw`。
 - 不對上游開 PR（2026-11-21 決定），只維護自己的 fork。
+- 隧道執行中欄位不另外做變暗效果（2026-11-21 決定）。
+
+## 遠端
+- `origin` = https://github.com/JJptt1980/5G-Proxy-Client （fork，預設分支 `gw`）
+- `upstream` = https://github.com/tokyoxpa3/5G-Proxy-Client （原專案）
+
+## 下一步
+- 實機測試：裝置連手機熱點、手機開 5G Proxy Pro，確認 gateway 偵測與綠色「已連線」畫面。
 
 ## 已知問題
 - 尚未在實機上測試閘道偵測，也還沒看過綠色「已連線」畫面（模擬器沒有 SOCKS 伺服器）。
-- 隧道執行中欄位會鎖住，但外觀沒有變暗，看不出不能改。
