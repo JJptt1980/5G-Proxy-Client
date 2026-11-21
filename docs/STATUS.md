@@ -6,6 +6,7 @@
 - 主畫面改版（MainActivity.buildUi／updateStatus）：最上面是狀態卡（灰＝未連線、黃＝連線中、綠＝已連線並顯示實際 IP、紅＝錯誤），下面是大的藍色啟動／紅色停止按鈕；伺服器、隧道模式用分組卡片；DNS、認證、其他、設定檔收進「進階設定」，預設收起，展開狀態存在偏好設定 ui_advanced_expanded。
 - TunSocksService 新增 currentServerIp，給狀態卡顯示實際連到的 IP。
 - 已確認 `./gradlew assembleDebug`（JDK 17）可編譯。
+- 2026-11-21 實機驗證成功（vivo V2126 連手機熱點、手機跑 5G Proxy Pro）：gateway 自動抓到閘道、狀態卡顯示綠色「已連線」。
 
 ## 已定案的決定
 - 保留原 LICENSE（MIT，版權屬原作者），說明寫在 README-GW.md。
@@ -19,7 +20,7 @@
 - `upstream` = https://github.com/tokyoxpa3/5G-Proxy-Client （原專案）
 
 ## 下一步
-- 實機測試：裝置連手機熱點、手機開 5G Proxy Pro，確認 gateway 偵測與綠色「已連線」畫面。
+- 無。
 
 ## 已知問題
-- 尚未在實機上測試閘道偵測，也還沒看過綠色「已連線」畫面（模擬器沒有 SOCKS 伺服器）。
+- 無。
