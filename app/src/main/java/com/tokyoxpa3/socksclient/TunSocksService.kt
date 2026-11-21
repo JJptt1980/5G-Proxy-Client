@@ -60,8 +60,10 @@ class TunSocksService : VpnService() {
         // 以遞增延遲（10s×次數，上限 5 分鐘）自動重啟隧道；任一次成功即重置。
         private const val SERVER_FAIL_WINDOW_MS = 60_000L
         private const val SERVER_FAIL_THRESHOLD = 3
-        private const val AUTO_RESTART_BASE_DELAY_MS = 10_000L
-        private const val AUTO_RESTART_MAX_DELAY_MS = 300_000L
+        // GW 版：固定 3 秒重連（上限＝基本值，不遞增）。熱點區網內 Pro 重啟通常幾秒就回來，
+        // 原版 10s→20s→…→300s 的退避會讓 Client 等太久才接回。
+        private const val AUTO_RESTART_BASE_DELAY_MS = 3_000L
+        private const val AUTO_RESTART_MAX_DELAY_MS = 3_000L
 
         // 常駐通知流量統計更新間隔
         private const val STATS_UPDATE_INTERVAL_MS = 3_000L
@@ -862,6 +864,9 @@ class TunSocksService : VpnService() {
                 val decision = synchronized(serverEventLock) { serverWatchdog.onNetworkFailure() }
                 val r = decision as? ServerWatchdog.Decision.Restart ?: return
                 Log.w(TAG, "Server unreachable, auto-restart in ${r.delayMs}ms")
+                // 記下「目前顯示的是網路錯誤」，重連後第一個 EVENT_OK 才會把狀態改回「隧道已啟用」；
+                // 沒記的話 clearSurfacedServerError() 會直接跳過，畫面永遠停在「N 秒後自動重連」。
+                lastSurfacedServerError = NativeEngine.EVENT_NETWORK_FAIL
                 publishStatus(getString(R.string.status_auto_reconnect, r.delayMs / 1000))
                 val runnable = Runnable {
                     autoRestartRunnable = null

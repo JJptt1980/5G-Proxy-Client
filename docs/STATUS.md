@@ -6,6 +6,7 @@
 - 主畫面改版（MainActivity.buildUi／updateStatus）：最上面是狀態卡（灰＝未連線、黃＝連線中、綠＝已連線並顯示實際 IP、紅＝錯誤），下面是大的藍色啟動／紅色停止按鈕；伺服器、隧道模式用分組卡片；DNS、認證、其他、設定檔收進「進階設定」，預設收起，展開狀態存在偏好設定 ui_advanced_expanded。
 - TunSocksService 新增 currentServerIp，給狀態卡顯示實際連到的 IP。
 - 已確認 `./gradlew assembleDebug`（JDK 17）可編譯。
+- 自動重連改成固定 3 秒（原本 10s→20s→…→300s 遞增）；修正重連成功後狀態卡停在「N 秒後自動重連」不變綠的問題（原專案就有的 bug）。實機停 Pro 再開確認：每 3 秒重連，Pro 回來後自動變回「隧道已啟用」。
 - 2026-11-21 實機驗證成功（vivo V2126 連手機熱點、手機跑 5G Proxy Pro）：gateway 自動抓到閘道、狀態卡顯示綠色「已連線」。
 
 ## 已定案的決定
