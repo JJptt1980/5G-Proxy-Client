@@ -27,6 +27,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -38,6 +39,7 @@
             android:name=".AppListActivity"
             android:exported="false"
             android:label="@string/applist_title"
+            android:screenOrientation="portrait"
             android:theme="@style/AppListTheme"
             android:windowSoftInputMode="adjustResize" />
 

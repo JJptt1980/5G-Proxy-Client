@@ -39,12 +39,12 @@
     <string name="btn_start_tunnel">Start Tunnel</string>
     <string name="btn_stop_tunnel">Stop Tunnel</string>
     <string name="btn_restart_tunnel">🔄 Restart Tunnel</string>
-    <string name="btn_select_apps">📱 Apps</string>
-    <string name="btn_save_profile">💾 Save Profile</string>
-    <string name="btn_delete_profile">🗑️ Delete Profile</string>
+    <string name="btn_select_apps">Choose apps</string>
+    <string name="btn_save_profile">Save profile</string>
+    <string name="btn_delete_profile">Delete profile</string>
     <string name="btn_load_profile">Load Profile</string>
-    <string name="btn_export_profiles">📤 Export</string>
-    <string name="btn_import_profiles">📥 Import</string>
+    <string name="btn_export_profiles">Export</string>
+    <string name="btn_import_profiles">Import</string>
 
     <!-- App list -->
     <string name="applist_title">Apps</string>
@@ -62,32 +62,32 @@
     <string name="applist_hint_pro_allowlist">ℹ️ Per-App mode: 5G Proxy Pro is locked out of the tunnel — both apps can run at once.</string>
 
     <!-- Coexistence switch (main screen) -->
-    <string name="label_coexist">🔗 Coexist with 5G Proxy Pro</string>
+    <string name="label_coexist">Coexist (5G Proxy Pro)</string>
     <string name="coexist_on">5G Proxy Pro is kept outside the tunnel — both apps can run at once.</string>
     <string name="coexist_off_exclude">Off: 5G Proxy Pro is inside the tunnel and cannot bind its 5G socket (EPERM), so it will not start.</string>
     <string name="coexist_off_other_mode">Off: only effective in “🚫 Exclude checked apps” mode — turning it on also switches to that mode and checks 5G Proxy Pro.</string>
     <string name="coexist_locked">Per-App mode keeps 5G Proxy Pro outside the tunnel — locked so it cannot be checked.</string>
 
     <!-- Section labels -->
-    <string name="label_server">SOCKS5 Server</string>
+    <string name="label_server">Pro phone address</string>
     <string name="label_auth">Authentication (optional)</string>
     <string name="label_dns">DNS (optional)</string>
-    <string name="label_udp_in_tcp">UDP relay over TCP (UDP-in-TCP)</string>
-    <string name="label_remote_dns">Remote DNS (resolve domains on proxy server)</string>
-    <string name="label_mode">Tunnel Mode</string>
+    <string name="label_udp_in_tcp">UDP inside TCP (if games drop)</string>
+    <string name="label_remote_dns">Let Pro look up addresses (recommended)</string>
+    <string name="label_mode">Which apps use the tunnel</string>
     <string name="label_mode_global">🌐 Global (all traffic)</string>
     <string name="label_mode_allowlist">🎯 Per-App (only checked apps)</string>
     <string name="label_mode_exclude">🚫 Exclude checked apps</string>
-    <string name="label_auto_start">Start tunnel on boot (only if it was running when you shut down)</string>
+    <string name="label_auto_start">Connect on boot</string>
     <string name="label_other">Other Settings</string>
     <string name="label_profiles">Profiles</string>
     <string name="label_kill_switch_status">Kill switch: %1$s</string>
     <string name="btn_vpn_settings">Open system VPN settings</string>
-    <string name="ks_status_none">Not enabled</string>
+    <string name="ks_status_none">turn on Always-on VPN</string>
     <string name="ks_status_always_on">Always-on VPN</string>
     <string name="ks_status_locked">Blocked without VPN</string>
-    <string name="ks_status_unreadable">Unknown — check system VPN settings</string>
-    <string name="btn_battery_optimization">🔋 Battery optimization</string>
+    <string name="ks_status_unreadable">turn on Always-on VPN</string>
+    <string name="btn_battery_optimization">Battery optimization</string>
     <string name="toast_battery_already">Already exempt from battery optimization</string>
     <string name="toast_battery_failed">Unable to open battery settings: %1$s</string>
 
@@ -137,4 +137,28 @@
     <string name="status_detail_gateway">%1$s:%2$d (Wi-Fi gateway)</string>
     <string name="status_detail_server">%1$s:%2$d</string>
     <string name="label_advanced">Advanced settings</string>
+    <string name="label_connect_settings">Connection</string>
+    <string name="link_edit">Edit</string>
+    <string name="link_go_settings">Settings ›</string>
+    <string name="link_wifi_settings">Wi-Fi settings ›</string>
+    <string name="btn_done">Done</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_delete">Delete</string>
+    <string name="seg_mode_global">All</string>
+    <string name="seg_mode_allowlist">Only checked</string>
+    <string name="seg_mode_exclude">Except checked</string>
+    <string name="btn_select_apps_count">Choose apps (%1$d selected)</string>
+    <string name="summary_via_gateway">Auto: Wi-Fi gateway</string>
+    <string name="summary_fixed_ip">Fixed address</string>
+    <string name="summary_no_gateway">Not on Wi-Fi yet</string>
+    <string name="summary_mode_global">All traffic goes through the tunnel</string>
+    <string name="summary_mode_allow">Only the %1$d checked apps use the tunnel</string>
+    <string name="summary_mode_exclude">All apps except the %1$d checked ones</string>
+    <string name="status_hint_unreachable">No answer from %1$s. Are you connected to the Pro phone\'s hotspot?</string>
+    <string name="menu_profile_save">Save current settings…</string>
+    <string name="menu_profile_delete">Delete current profile</string>
+    <string name="menu_profile_export">Export to clipboard</string>
+    <string name="menu_profile_import">Import from clipboard</string>
+    <string name="toast_profile_pick_first">Pick a profile from the list first</string>
+    <string name="confirm_delete_profile">Delete profile "%1$s"?</string>
 </resources>

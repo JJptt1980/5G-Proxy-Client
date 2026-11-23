@@ -26,6 +26,7 @@
 | `TunSocksService.kt`、`MainActivity.kt`、`BootReceiver.kt` | 伺服器位址沒設定過時，預設值從空白改成 `gateway` |
 | `app/build.gradle` | debug 版加上 `applicationIdSuffix ".gw"` 和 `versionNameSuffix "-gw"`，可以和原版 App 同時安裝 |
 | `app/src/debug/res/values*/strings.xml`（新增） | debug 版的 App 名稱改為「5G Proxy Client GW」，伺服器欄位提示加上 gateway 說明 |
+| `MainActivity.kt`、`AndroidManifest.xml`、字串（2026-11-23） | 首頁固定一頁並鎖直式：狀態卡＋連線摘要＋底部主按鈕，連線設定與進階設定改成滑出面板；連不上時提示實際 IP 與下一步；模式改切換鈕；拿掉 emoji、術語改白話 |
 | `gradlew` | 加上執行權限 |
 
 注意：套件名稱和 App 名稱的變更只套用在 **debug 版**；release 版的套件名稱和原版相同。
