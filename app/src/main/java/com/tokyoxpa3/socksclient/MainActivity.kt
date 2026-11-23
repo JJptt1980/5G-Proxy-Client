@@ -87,7 +87,7 @@ class MainActivity : Activity() {
             if (intent?.action == TunSocksService.ACTION_STATUS) {
                 updateStatus(intent.getStringExtra("status"))
                 // 開機自動啟動的「閃一下」：隧道建立成功後自動關閉
-                if (autoFinishPending && TunSocksService.isRunning) {
+                if (autoFinishPending && TunSocksService.isActive) {
                     autoFinishPending = false
                     finish()
                 }
@@ -105,7 +105,7 @@ class MainActivity : Activity() {
             (intent?.getBooleanExtra(EXTRA_AUTO_START, false) ?: false)
         buildUi()
         // 開啟 App 即自動連線（像 sockstun）：非「閃一下」啟動、隧道未在跑、有已存設定 → 自動建立 VPN
-        if (!isRecreation && !pendingAutoStart && !TunSocksService.isRunning &&
+        if (!isRecreation && !pendingAutoStart && !TunSocksService.isActive &&
             !(Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: "").isBlank()
         ) {
             attemptStart()
@@ -147,7 +147,7 @@ class MainActivity : Activity() {
         refreshSummary()
 
         // 開機「閃一下」：若在背景停留期間隧道已連上，回到前台時立即關閉
-        if (autoFinishPending && TunSocksService.isRunning) {
+        if (autoFinishPending && TunSocksService.isActive) {
             autoFinishPending = false
             finish()
             return
@@ -155,7 +155,7 @@ class MainActivity : Activity() {
 
         if (pendingAutoStart) {
             pendingAutoStart = false
-            if (!TunSocksService.isRunning) {
+            if (!TunSocksService.isActive) {
                 Toast.makeText(this, R.string.toast_starting, Toast.LENGTH_SHORT).show()
                 attemptStart()
                 autoFinishPending = true
@@ -189,6 +189,7 @@ class MainActivity : Activity() {
     private val cYellow = 0xFFFFC300.toInt()
     private val cRed = 0xFFFF453A.toInt()
     private val cGray = 0xFF8E8E93.toInt()
+    private val cWaiting = 0xFF64D2FF.toInt()
 
     private fun rounded(color: Int, radiusDp: Int, strokeColor: Int? = null) = GradientDrawable().apply {
         setColor(color)
@@ -308,7 +309,7 @@ class MainActivity : Activity() {
             layoutParams = lp(topDp = 12, bottomDp = 4, height = dp(56))
             setOnClickListener {
                 it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-                if (TunSocksService.isRunning) {
+                if (TunSocksService.isActive) {
                     startService(Config.stopIntent(this@MainActivity))
                 } else {
                     attemptStart()
@@ -1144,11 +1145,13 @@ class MainActivity : Activity() {
 
     private fun updateStatus(text: String?) {
         val raw = text ?: ""
-        val running = TunSocksService.isRunning
+        val running = TunSocksService.isActive
+        val waitingPro = TunSocksService.isWaitingPro
         // 服務送出的字串以 ✅／⚠️ 開頭區分成功與錯誤，這裡只拿來分類，不改服務端的訊息。
         val detail = raw.removePrefix("✅").removePrefix("⚠️").trim()
         val idleTexts = setOf("", getString(R.string.status_not_started), getString(R.string.status_stopped))
         val (titleRes, dotColor, shownDetail) = when {
+            waitingPro -> Triple(R.string.status_title_waiting_pro, cWaiting, getString(R.string.status_waiting_pro_detail))
             running && raw.startsWith("✅") -> Triple(R.string.status_title_connected, cGreen, connectedDetail(detail))
             running && raw.contains("⚠️") -> Triple(R.string.status_title_error, cRed, detail)
             running -> Triple(R.string.status_title_connecting, cYellow, detail)
@@ -1162,7 +1165,7 @@ class MainActivity : Activity() {
         val reconnectPrefix = getString(R.string.status_auto_reconnect, 0).substringBefore("0").trim()
         val unreachable = running && titleRes == R.string.status_title_connecting && raw.startsWith(reconnectPrefix)
         val finalDetail = if (unreachable) unreachableHint() else shownDetail
-        if (::tvStatusAction.isInitialized) tvStatusAction.visibility = if (unreachable) View.VISIBLE else View.GONE
+        if (::tvStatusAction.isInitialized) tvStatusAction.visibility = if (unreachable || waitingPro) View.VISIBLE else View.GONE
         tvStatusTitle.text = getString(titleRes)
         tvStatusTitle.setTextColor(if (dotColor == cRed) cRed else cText)
         tvStatus.text = finalDetail

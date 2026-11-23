@@ -36,7 +36,7 @@ class BootReceiver : BroadcastReceiver() {
             Log.i(TAG, "No saved config, skip")
             return
         }
-        if (TunSocksService.isRunning) {
+        if (TunSocksService.isActive) {
             Log.i(TAG, "Already running, skip")
             return
         }

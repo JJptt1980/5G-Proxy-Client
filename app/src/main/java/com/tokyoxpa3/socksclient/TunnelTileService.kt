@@ -52,7 +52,7 @@ class TunnelTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        if (TunSocksService.isRunning) {
+        if (TunSocksService.isActive) {
             Log.i(TAG, "Tile: stopping tunnel")
             startService(Config.stopIntent(this))
         } else {
@@ -74,7 +74,7 @@ class TunnelTileService : TileService() {
 
     private fun updateTile() {
         val tile = qsTile ?: return
-        val active = TunSocksService.isRunning
+        val active = TunSocksService.isActive
         tile.state = if (active) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.tile_label)
         // Tile.setSubtitle 於 API 29（Android 10）才加入；minSdk 26 上直接呼叫會

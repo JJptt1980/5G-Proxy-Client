@@ -161,4 +161,8 @@
     <string name="menu_profile_import">Import from clipboard</string>
     <string name="toast_profile_pick_first">Pick a profile from the list first</string>
     <string name="confirm_delete_profile">Delete profile "%1$s"?</string>
+    <string name="notification_waiting_pro">Waiting for Pro (network works normally)</string>
+    <string name="status_waiting_pro">Waiting for Pro</string>
+    <string name="status_title_waiting_pro">Waiting for Pro</string>
+    <string name="status_waiting_pro_detail">Pro not found, the network works normally. Connects automatically when Pro appears.</string>
 </resources>

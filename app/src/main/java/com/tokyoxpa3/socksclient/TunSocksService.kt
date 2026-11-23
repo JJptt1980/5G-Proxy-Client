@@ -85,6 +85,17 @@ class TunSocksService : VpnService() {
         @Volatile
         var lastStatus = ""
 
+        // [GW] 找不到 Pro：隧道關著（網路照常走 Wi-Fi），服務留在背景等 Pro 出現
+        @Volatile
+        var isWaitingPro = false
+
+        /** 服務是否「開著」（隧道運作中或等待 Pro）；UI 的啟動／停止按鈕看這個。 */
+        val isActive: Boolean get() = isRunning || isWaitingPro
+
+        private const val PRO_PROBE_INTERVAL_MS = 10_000L
+        private const val PRO_PROBE_TIMEOUT_MS = 1_500
+        private const val PRO_LOST_AFTER_FAILS = 2
+
         // 目前實際連線的伺服器 IP（gateway 解析後的結果），給主畫面狀態卡顯示
         @Volatile
         var currentServerIp: String? = null
@@ -152,6 +163,13 @@ class TunSocksService : VpnService() {
     // 已浮上 UI 的伺服器錯誤事件碼（EVENT_OK=無錯誤），供去重並在成功後還原狀態字串
     @Volatile
     private var lastSurfacedServerError = NativeEngine.EVENT_OK
+
+    // ── [GW] 自動判別有沒有 Pro ──
+    private var proWatchJob: kotlinx.coroutines.Job? = null
+    private var wifiCallback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var proProbeFails = 0
+    @Volatile private var tearingDownForPro = false
+    private val probeNowRunnable = Runnable { serviceScope.launch { proWatchTick() } }
 
     override fun onCreate() {
         super.onCreate()
@@ -291,6 +309,13 @@ class TunSocksService : VpnService() {
                 } catch (e: Exception) {
                     resolveErrMsg = e.message
                 }
+                // [GW] 開隧道前先確認 Pro 真的在：不在就不開隧道（網路照常），改在背景等
+                val target = resolved
+                if (target == null && GatewayResolver.isAuto(host) || target != null && !probePro(target, port)) {
+                    Log.i(TAG, "Pro not reachable at ${target ?: "(no gateway)"}:$port, waiting")
+                    mainHandler.post { if (startPending) enterWaitPro() }
+                    return@launch
+                }
                 mainHandler.post { continueStartTunnel(resolved, resolveErrMsg, backgroundStart) }
             }
         } catch (e: Exception) {
@@ -394,6 +419,9 @@ class TunSocksService : VpnService() {
 
             startPending = false
             isRunning = true
+            isWaitingPro = false
+            proProbeFails = 0
+            startProWatch()
             // 快取系統 Always-on VPN / lockdown 狀態，供 UI 顯示 Kill Switch 三態
             // isAlwaysOn / isLockdownEnabled 為 API 29+，minSdk 26 需防護
             lastAlwaysOn = Build.VERSION.SDK_INT >= 29 && isAlwaysOn
@@ -549,6 +577,8 @@ class TunSocksService : VpnService() {
     }
 
     private fun stopTunnel() {
+        isWaitingPro = false
+        stopProWatch()
         mainHandler.removeCallbacks(backgroundStartRetry)
         backgroundRetry.reset()
         bootContext = false
@@ -873,7 +903,18 @@ class TunSocksService : VpnService() {
                     synchronized(serverEventLock) { serverWatchdog.onRestartFired() }
                     if (isRunning && !startPending) {
                         autoRestartInProgress = true
-                        softRestart()
+                        serviceScope.launch {
+                            val ip = currentServerIp
+                            val port = Config.prefs(this@TunSocksService)
+                                .getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
+                            val gw = proTarget()
+                            val alive = (ip != null && probePro(ip, port)) || (gw != null && gw != ip && probePro(gw, port))
+                            if (alive) softRestart()
+                            else {
+                                synchronized(serverEventLock) { autoRestartInProgress = false }
+                                tearDownToWaitPro("watchdog")
+                            }
+                        }
                     }
                 }
                 autoRestartRunnable = runnable
@@ -910,6 +951,128 @@ class TunSocksService : VpnService() {
             // 只清失敗與排程，保留退避計數（restartTunnel 內部也會呼叫本函式，
             // 若連計數一起清，自動重啟會永遠停在最小延遲）
             serverWatchdog.clearFailures()
+        }
+    }
+
+    // ───────── [GW] 自動判別有沒有 Pro ─────────
+
+    /** 目前該連的 Pro 位址：gateway/auto 用 Wi-Fi 閘道，固定 IP 就用它；主機名稱不判別（回 null）。 */
+    private fun proTarget(): String? {
+        val host = Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: ""
+        return when {
+            GatewayResolver.isAuto(host) -> try { GatewayResolver.wifiGatewayV4(this) } catch (e: Exception) { null }
+            Config.isLiteralIp(host) -> host
+            else -> null
+        }
+    }
+
+    /** 對 ip:port 做一次 SOCKS5 打招呼，回 0x05 才算 Pro 在。私網位址本來就不走隧道，另外 protect 保險。 */
+    private fun probePro(ip: String, port: Int): Boolean {
+        val s = Socket()
+        return try {
+            s.bind(InetSocketAddress(0))
+            protect(s)
+            s.connect(InetSocketAddress(ip, port), PRO_PROBE_TIMEOUT_MS)
+            s.soTimeout = PRO_PROBE_TIMEOUT_MS
+            s.getOutputStream().apply { write(byteArrayOf(5, 1, 0)); flush() }
+            s.getInputStream().read() == 5
+        } catch (e: Exception) {
+            false
+        } finally {
+            try { s.close() } catch (e: Exception) {}
+        }
+    }
+
+    /** 等待 Pro：隧道關著、網路照常，通知留著；Pro 一出現就自動接上。 */
+    private fun enterWaitPro() {
+        startPending = false
+        isRunning = false
+        isWaitingPro = true
+        currentServerIp = null
+        lastSurfacedServerError = NativeEngine.EVENT_OK
+        proProbeFails = 0
+        try {
+            val n = createNotification(getString(R.string.notification_waiting_pro))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, n)
+            }
+        } catch (e: Exception) { Log.w(TAG, "waitPro notification failed: ${e.message}") }
+        publishStatus(getString(R.string.status_waiting_pro))
+        startProWatch()
+    }
+
+    private fun tearDownToWaitPro(reason: String) {
+        if (tearingDownForPro || !isRunning) return
+        tearingDownForPro = true
+        Log.w(TAG, "Pro gone ($reason): closing tunnel so the network keeps working")
+        serviceScope.launch {
+            stopEngineSync()
+            mainHandler.post {
+                tearingDownForPro = false
+                if (Config.prefs(this@TunSocksService).getBoolean(Config.KEY_WAS_RUNNING, false)) enterWaitPro()
+            }
+        }
+    }
+
+    private fun startProWatch() {
+        if (proWatchJob?.isActive != true) {
+            proWatchJob = serviceScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(PRO_PROBE_INTERVAL_MS)
+                    proWatchTick()
+                }
+            }
+        }
+        if (wifiCallback == null) {
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = probeSoon()
+                override fun onLost(network: Network) = probeSoon()
+                override fun onLinkPropertiesChanged(network: Network, lp: android.net.LinkProperties) = probeSoon()
+            }
+            try {
+                connectivityManager?.registerNetworkCallback(
+                    android.net.NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), cb
+                )
+                wifiCallback = cb
+            } catch (e: Exception) { Log.w(TAG, "register wifi callback failed: ${e.message}") }
+        }
+    }
+
+    private fun stopProWatch() {
+        proWatchJob?.cancel(); proWatchJob = null
+        mainHandler.removeCallbacks(probeNowRunnable)
+        wifiCallback?.let { try { connectivityManager?.unregisterNetworkCallback(it) } catch (e: Exception) {} }
+        wifiCallback = null
+    }
+
+    /** 換 Wi-Fi 時 1.5 秒後檢查一次（等 DHCP 拿到閘道）。 */
+    private fun probeSoon() {
+        mainHandler.removeCallbacks(probeNowRunnable)
+        mainHandler.postDelayed(probeNowRunnable, 1_500)
+    }
+
+    private fun proWatchTick() {
+        if (startPending || tearingDownForPro) return
+        val port = Config.prefs(this).getString(Config.KEY_PORT, Config.DEFAULT_PORT.toString())?.toIntOrNull() ?: Config.DEFAULT_PORT
+        val target = proTarget()
+        if (isWaitingPro) {
+            if (target != null && probePro(target, port)) {
+                Log.i(TAG, "Pro found at $target:$port, starting tunnel")
+                mainHandler.post {
+                    if (isWaitingPro && !startPending && !isRunning) {
+                        isWaitingPro = false
+                        startTunnel(null)
+                    }
+                }
+            }
+        } else if (isRunning) {
+            val host = Config.prefs(this).getString(Config.KEY_HOST, "gateway") ?: ""
+            if (target == null && !GatewayResolver.isAuto(host)) return   // 主機名稱：不判別
+            val ok = target != null && probePro(target, port)
+            proProbeFails = if (ok) 0 else proProbeFails + 1
+            if (proProbeFails >= PRO_LOST_AFTER_FAILS) tearDownToWaitPro("probe")
         }
     }
 
@@ -1031,6 +1194,8 @@ class TunSocksService : VpnService() {
     }
 
     override fun onDestroy() {
+        isWaitingPro = false
+        stopProWatch()
         serviceScope.cancel()
         statsJob = null
         resetServerWatchdog()

@@ -161,4 +161,8 @@
     <string name="menu_profile_import">從剪貼簿匯入</string>
     <string name="toast_profile_pick_first">先從清單選一個設定檔</string>
     <string name="confirm_delete_profile">刪除設定檔「%1$s」？</string>
+    <string name="notification_waiting_pro">等待 Pro（網路照常使用）</string>
+    <string name="status_waiting_pro">等待 Pro</string>
+    <string name="status_title_waiting_pro">等待 Pro</string>
+    <string name="status_waiting_pro_detail">找不到 Pro，網路照常使用；Pro 一出現就自動連上。</string>
 </resources>
