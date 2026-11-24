@@ -974,8 +974,17 @@ class TunSocksService : VpnService() {
             protect(s)
             s.connect(InetSocketAddress(ip, port), PRO_PROBE_TIMEOUT_MS)
             s.soTimeout = PRO_PROBE_TIMEOUT_MS
-            s.getOutputStream().apply { write(byteArrayOf(5, 1, 0)); flush() }
-            s.getInputStream().read() == 5
+            val out = s.getOutputStream()
+            val inp = s.getInputStream()
+            out.write(byteArrayOf(5, 1, 0)); out.flush()
+            if (inp.read() != 5) return false
+            // [GW] 不用認證時順便報名，讓 Pro 的「誰在用」認得這台；失敗不影響探測結果
+            if (inp.read() == 0) try {
+                out.write(GwIdentity.connectRequest(GwIdentity.host(GwIdentity.id(this), GwIdentity.name(this))))
+                out.flush()
+                inp.read(ByteArray(10))
+            } catch (e: Exception) {}
+            true
         } catch (e: Exception) {
             false
         } finally {
