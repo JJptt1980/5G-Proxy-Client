@@ -37,4 +37,19 @@ object GatewayResolver {
             null
         }
     }
+
+    /** 這台在 Wi-Fi 上的 IPv4（給使用者跟 Pro「誰在用」對照）。 */
+    fun wifiLocalV4(ctx: Context): String? {
+        val cm = ctx.applicationContext.getSystemService(ConnectivityManager::class.java) ?: return null
+        return try {
+            @Suppress("DEPRECATION")
+            cm.allNetworks.firstNotNullOfOrNull { net ->
+                val caps = cm.getNetworkCapabilities(net) ?: return@firstNotNullOfOrNull null
+                if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) return@firstNotNullOfOrNull null
+                cm.getLinkProperties(net)?.linkAddresses
+                    ?.firstOrNull { it.address is Inet4Address }?.address?.hostAddress
+            }
+        } catch (e: Exception) { null }
+    }
 }

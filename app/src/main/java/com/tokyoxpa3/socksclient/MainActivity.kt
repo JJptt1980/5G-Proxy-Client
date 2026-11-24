@@ -767,9 +767,11 @@ class MainActivity : Activity() {
         if (GatewayResolver.isAuto(host)) {
             tvSummaryServer.text = if (ip != null) "$ip:$port" else getString(R.string.summary_no_gateway)
             tvSummaryVia.text = getString(R.string.summary_via_gateway)
+            GatewayResolver.wifiLocalV4(this)?.let { me -> tvSummaryVia.append(getString(R.string.summary_my_ip, me)) }
         } else {
             tvSummaryServer.text = "$host:$port"
             tvSummaryVia.text = getString(R.string.summary_fixed_ip)
+            GatewayResolver.wifiLocalV4(this)?.let { me -> tvSummaryVia.append(getString(R.string.summary_my_ip, me)) }
         }
         val n = currentSelectedApps().size
         tvSummaryMode.text = when (p.getInt(Config.KEY_MODE, Config.MODE_GLOBAL)) {

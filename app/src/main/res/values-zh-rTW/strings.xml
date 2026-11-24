@@ -165,4 +165,5 @@
     <string name="status_waiting_pro">等待 Pro</string>
     <string name="status_title_waiting_pro">等待 Pro</string>
     <string name="status_waiting_pro_detail">找不到 Pro，網路照常使用；Pro 一出現就自動連上。</string>
+    <string name="summary_my_ip">\u00A0·\u00A0這台 %1$s</string>
 </resources>
