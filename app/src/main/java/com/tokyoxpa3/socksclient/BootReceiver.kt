@@ -9,7 +9,8 @@ import android.util.Log
  * 開機自啟（以及 App 更新後還原）：依「開機自動啟動」設定拉起隧道服務。
  *
  * 三個條件同時成立才會啟動，缺一不可：
- *  1. 使用者勾了「開機自動啟動隧道」（[Config.KEY_AUTO_START]，預設關）
+ *  1. 使用者勾了「開機自動啟動隧道」（[Config.KEY_AUTO_START]，預設關）；
+ *     App 更新（MY_PACKAGE_REPLACED）不看這條——更新前在跑就開回來（GW，2026-11-26，App 內更新用）
  *  2. 關機前隧道仍在執行（[Config.KEY_WAS_RUNNING]，按過停止就是 false）
  *  3. 已存有伺服器設定
  *
@@ -23,7 +24,7 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
         if (action !in ACTIONS) return
         val prefs = Config.prefs(context)
-        if (!prefs.getBoolean(Config.KEY_AUTO_START, false)) {
+        if (needsAutoStartSetting(action) && !prefs.getBoolean(Config.KEY_AUTO_START, false)) {
             Log.i(TAG, "Auto-start disabled, skip")
             return
         }
@@ -52,6 +53,9 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "BootReceiver"
+
+        /** 開機要看「開機自動啟動」；App 更新不用，只看更新前有沒有在跑。 */
+        fun needsAutoStartSetting(action: String) = action != Intent.ACTION_MY_PACKAGE_REPLACED
         private val ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
