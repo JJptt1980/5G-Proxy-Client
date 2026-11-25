@@ -16,6 +16,7 @@
 - 跟 Pro 報名（2026-11-24）：探測 Pro 時，不用認證就順便 CONNECT「<8碼ID>.<名字hex>.gw-id.invalid」，ID 第一次用時亂數產生後固定，名字取系統裝置名稱（沒有就型號），讓 Pro GW 的「誰在用」認得這台；原版 Pro 只會當連線失敗，不影響探測結果。單元測試通過。V2126＋X200 Pro 實測：ID ea86c8dc 被 Pro 認出，清單顯示原本取的名字。
 
 - App 內更新（2026-11-26，照 Weather One）：首頁最下面「目前版本 X · 檢查更新」，讀 GitHub `feed` release 的 update.json，下載後核對 SHA-256 再叫出系統安裝畫面；只在 GW（.gw）版出現，REQUEST_INSTALL_PACKAGES 只放 debug manifest。發版用 `tools/release.sh "說明"`（先調高 versionCode；一律 prerelease）。V2126 實測：1.7.0（23）→ 按檢查更新 → 下載 1.7.1（24）→ 第一次要在系統設定允許「安裝不明應用程式」→ 安裝成功。
+- App 更新後自動開回隧道（2026-11-26，1.7.2／25）：MY_PACKAGE_REPLACED 不看「開機自動啟動」，只要更新前沒按過停止就開回來。V2126 實測：已連線時 App 內更新 1.7.1→1.7.2，07:22:17 BootReceiver 自動啟動，VPN 連上並通過驗證。
 
 ## 已定案的決定
 - 保留原 LICENSE（MIT，版權屬原作者），說明寫在 README-GW.md。
@@ -37,4 +38,4 @@
   4. 橫向、直向版面做成同一頁；判斷接上來的是什麼設備（使用者說跟「網路 TOP」專案討論過，可參考那邊的做法；Pro 已有 ID 報名＋IP 末碼＋猜品牌）。
 
 ## 已知問題
-- App 內更新後 Client 的隧道不會自己再開（開機自動啟動沒勾時，BootReceiver 跳過）；要手動按啟動。
+- 無。
