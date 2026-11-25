@@ -141,6 +141,7 @@ class MainActivity : Activity() {
         )
         updateStatus(TunSocksService.lastStatus)
         refreshKillSwitch()
+        selfUpdater?.onResume()
         // 從 App 清單頁回來後，勾選清單可能已變動（例如取消了 Pro）→ 重算開關狀態。
         // 也一併重探 Pro 是否已安裝／被解除安裝。
         syncCoexistSwitch()
@@ -542,6 +543,12 @@ class MainActivity : Activity() {
         root.addView(View(this), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         root.addView(entryRow, lp(topDp = 12, height = dp(44)))
         root.addView(btnToggle)
+        // GW 版才有：App 內更新（SelfUpdate.kt）
+        if (SelfUpdate.enabledFor(packageName)) {
+            val u = SelfUpdater(this)
+            selfUpdater = u
+            root.addView(u.view(cTextSecondary, cAccent, dp(40)), lp(topDp = 4))
+        }
 
         // 保底：字體很大放不下時才能捲
         val scroll = ScrollView(this).apply {
@@ -609,6 +616,7 @@ class MainActivity : Activity() {
     }
 
     // ── GW 首頁一頁：摘要卡、面板、連結 ──
+    private var selfUpdater: SelfUpdater? = null
     private lateinit var tvSummaryServer: TextView
     private lateinit var tvSummaryVia: TextView
     private lateinit var tvSummaryMode: TextView
