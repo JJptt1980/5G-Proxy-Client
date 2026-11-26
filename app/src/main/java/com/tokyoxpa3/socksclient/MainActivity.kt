@@ -41,6 +41,7 @@ class MainActivity : Activity() {
     companion object {
         private const val REQ_VPN_PERMISSION = 100
         private const val REQ_NOTIFICATION_PERMISSION = 200
+        private const val REQ_WIFI_SCAN_PERMISSION = 201
         const val EXTRA_AUTO_START = "auto_start_from_tile"
         private const val KEY_UI_ADVANCED_EXPANDED = "ui_advanced_expanded"
     }
@@ -142,6 +143,7 @@ class MainActivity : Activity() {
         updateStatus(TunSocksService.lastStatus)
         refreshKillSwitch()
         selfUpdater?.onResume()
+        wifiWaker?.onResume()
         // 從 App 清單頁回來後，勾選清單可能已變動（例如取消了 Pro）→ 重算開關狀態。
         // 也一併重探 Pro 是否已安裝／被解除安裝。
         syncCoexistSwitch()
@@ -167,6 +169,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(statusReceiver)
+        wifiWaker?.onPause()
     }
 
     // ── UI 樣式工具（只用內建元件 + GradientDrawable，不引入 Material）──
@@ -496,6 +499,13 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         }.apply { visibility = View.GONE; gravity = Gravity.START or Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, 0) }
         statusTexts.addView(tvStatusAction)
+        if (WifiWaker.enabledFor(packageName)) {
+            val w = WifiWaker(this, REQ_WIFI_SCAN_PERMISSION)
+            wifiWaker = w
+            statusTexts.addView(w.view { t, onClick -> linkText(t, onClick) }.apply {
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, 0)
+            })
+        }
 
         fun entryButton(titleRes: Int, panel: android.app.Dialog) = TextView(this).apply {
             text = getString(titleRes) + "  ›"
@@ -621,6 +631,7 @@ class MainActivity : Activity() {
     private lateinit var tvSummaryVia: TextView
     private lateinit var tvSummaryMode: TextView
     private lateinit var tvStatusAction: TextView
+    private var wifiWaker: WifiWaker? = null
     private lateinit var btnProfileMenu: TextView
 
     private fun linkText(text: String, onClick: () -> Unit) = TextView(this).apply {
@@ -938,6 +949,7 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        wifiWaker?.onPermissionResult(requestCode)
         if (requestCode == REQ_NOTIFICATION_PERMISSION) {
             val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
             if (!granted) {
@@ -1176,6 +1188,7 @@ class MainActivity : Activity() {
         val unreachable = running && titleRes == R.string.status_title_connecting && raw.startsWith(reconnectPrefix)
         val finalDetail = if (unreachable) unreachableHint() else shownDetail
         if (::tvStatusAction.isInitialized) tvStatusAction.visibility = if (unreachable || waitingPro) View.VISIBLE else View.GONE
+        wifiWaker?.setWaiting(waitingPro)
         tvStatusTitle.text = getString(titleRes)
         tvStatusTitle.setTextColor(if (dotColor == cRed) cRed else cText)
         tvStatus.text = finalDetail
