@@ -18,6 +18,7 @@
 - App 內更新（2026-11-26，照 Weather One）：首頁最下面「目前版本 X · 檢查更新」，讀 GitHub `feed` release 的 update.json，下載後核對 SHA-256 再叫出系統安裝畫面；只在 GW（.gw）版出現，REQUEST_INSTALL_PACKAGES 只放 debug manifest。發版用 `tools/release.sh "說明"`（先調高 versionCode；一律 prerelease）。V2126 實測：1.7.0（23）→ 按檢查更新 → 下載 1.7.1（24）→ 第一次要在系統設定允許「安裝不明應用程式」→ 安裝成功。
 - App 更新後自動開回隧道（2026-11-26，1.7.2／25）：MY_PACKAGE_REPLACED 不看「開機自動啟動」，只要更新前沒按過停止就開回來。V2126 實測：已連線時 App 內更新 1.7.1→1.7.2，07:22:17 BootReceiver 自動啟動，VPN 連上並通過驗證。
 - 叫醒 Wi-Fi 搜尋（2026-11-26，WifiWaker.kt，只在 GW 版）：等待 Pro 時狀態卡多一行「立即搜尋 Wi-Fi ›」，畫面開著時也每 30 秒自動要系統搜尋一次（兩次至少隔 25 秒；Android 限制每 2 分鐘 4 次，App 不在前景時限制更嚴，所以要畫面開著才有效）。第一次按要允許位置權限（權限只放 debug manifest）。V2126 實測：允許「使用應用程式時」後 startScan 成功，30 秒後自動再搜一次。
+- JJSans 字型（2026-11-27，1.7.3／26）：全 App 換成使用者自製的 JJSans（res/font/jj_sans，OFL 授權檔在 fonts/OFL.txt；原作者 MIT 不變）。主題設 android:fontFamily，程式裡寫死 Typeface.DEFAULT 的改用 JJSans。已發 v1.7.3-gw-26（prerelease），V2126、小新平板都裝好，截圖確認。
 
 ## 已定案的決定
 - 保留原 LICENSE（MIT，版權屬原作者），說明寫在 README-GW.md。
