@@ -266,7 +266,7 @@ class MainActivity : Activity() {
             hint = getString(R.string.hint_pass)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             // 密碼欄位預設等寬字型，改回一般字型與其他欄位一致
-            typeface = Typeface.DEFAULT
+            typeface = jjFont
         }
         etProfileName = EditText(this).apply { hint = getString(R.string.hint_profile_name); isSingleLine = true }
         listOf(etHost, etPort, etDns1, etDns2, etUser, etPass, etProfileName).forEach { styleField(it) }
@@ -455,7 +455,7 @@ class MainActivity : Activity() {
         // ── 連線摘要卡：會連到哪裡、什麼模式；點一下打開連線設定 ──
         tvSummaryServer = TextView(this).apply {
             textSize = 22f
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+            setTypeface(jjFont, Typeface.BOLD)
             fontFeatureSettings = "tnum"
             setTextColor(cText)
             setPadding(0, dp(2), 0, 0)
@@ -632,6 +632,8 @@ class MainActivity : Activity() {
     private lateinit var tvSummaryMode: TextView
     private lateinit var tvStatusAction: TextView
     private var wifiWaker: WifiWaker? = null
+    /** 程式裡指定字型的地方一律用 JJSans（主題也設了 android:fontFamily）。 */
+    private val jjFont: Typeface by lazy { resources.getFont(R.font.jj_sans) }
     private lateinit var btnProfileMenu: TextView
 
     private fun linkText(text: String, onClick: () -> Unit) = TextView(this).apply {
@@ -687,11 +689,11 @@ class MainActivity : Activity() {
                 addView(TextView(this@MainActivity).apply {
                     text = getString(titleRes)
                     textSize = 18f
-                    setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+                    setTypeface(jjFont, Typeface.BOLD)
                     setTextColor(cText)
                 }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(linkText(getString(R.string.btn_done)) { dialog.dismiss() }.apply {
-                    textSize = 16f; setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+                    textSize = 16f; setTypeface(jjFont, Typeface.BOLD)
                 })
             })
         }

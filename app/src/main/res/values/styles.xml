@@ -10,7 +10,13 @@
       光靠 systemBars insets 只清得掉狀態列，清不掉 overlay 的 ActionBar，
       因此這一頁直接不用 ActionBar，標題改由內容自己畫（見 AppListActivity）。
     -->
+    <!-- 全 App 字型：JJSans（使用者自製，OFL 授權，見 fonts/OFL.txt）。 -->
+    <style name="GwAppTheme" parent="@android:style/Theme.DeviceDefault">
+        <item name="android:fontFamily">@font/jj_sans</item>
+    </style>
+
     <style name="AppListTheme" parent="@android:style/Theme.DeviceDefault">
+        <item name="android:fontFamily">@font/jj_sans</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
